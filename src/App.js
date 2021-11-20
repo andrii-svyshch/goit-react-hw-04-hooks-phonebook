@@ -1,97 +1,78 @@
-import React, { Component } from 'react';
+import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { v4 as uuidv4 } from 'uuid';
 import ContactForm from './components/ContactForm';
 import Filter from './components/Filter';
 import ContactList from 'components/ContactList';
 
-class App extends Component {
-  static defaultProps = {
-    initialContacts: [
-      // { id: 'id-1', name: 'Rosie Simpson', number: '459-12-56' },
-      // { id: 'id-2', name: 'Hermione Kline', number: '443-89-12' },
-      // { id: 'id-3', name: 'Eden Clements', number: '645-17-79' },
-      // { id: 'id-4', name: 'Annie Copeland', number: '227-91-26' },
-    ],
-    initialFilter: '',
-  };
+export default function App() {
+  const [contacts, setContacts] = useState([]);
+  const [filter, setFilter] = useState('');
 
-  static propTypes = {
-    initialContacts: PropTypes.arrayOf(
-      PropTypes.shape({
-        id: PropTypes.string.isRequired,
-        name: PropTypes.string.isRequired,
-        number: PropTypes.string.isRequired,
-      }),
-    ),
-    initialFilter: PropTypes.string.isRequired,
-  };
-
-  state = {
-    contacts: this.props.initialContacts,
-    filter: this.props.initialFilter,
-  };
-
-  componentDidMount() {
+  useEffect(() => {
     const contacts = JSON.parse(localStorage.getItem('contacts'));
     if (contacts) {
-      this.setState({ contacts: contacts });
+      setContacts(contacts);
     }
-  }
+  }, []);
 
-  componentDidUpdate(prevProps, prevState) {
-    const { contacts } = this.state;
-    if (contacts !== prevState.contacts) {
-      localStorage.setItem('contacts', JSON.stringify(contacts));
-    }
-  }
+  useEffect(
+    prevState =>
+      contacts !== prevState &&
+      localStorage.setItem('contacts', JSON.stringify(contacts)),
+    [contacts],
+  );
 
-  duplicateValidator = name =>
-    this.state.contacts.find(contact => contact.name === name);
+  const duplicateValidator = name =>
+    contacts.find(contact => contact.name === name);
 
-  contactFormSubmitHandler = ({ name, number }) => {
-    this.duplicateValidator(name)
+  const contactFormSubmitHandler = (name, number) => {
+    duplicateValidator(name)
       ? alert(`${name} is already in contacts`)
-      : this.setState(prevState => ({
-          contacts: [{ name, number, id: uuidv4() }, ...prevState.contacts],
-        }));
+      : setContacts(prevState => [
+          { name: name, number: number, id: uuidv4() },
+          ...prevState,
+        ]);
   };
 
-  changeFilter = e => {
-    this.setState({ filter: e.currentTarget.value });
+  const changeFilter = e => {
+    setFilter(e.target.value);
   };
 
-  getFilteredContacts = () => {
-    const { contacts, filter } = this.state;
+  const getFilteredContacts = () => {
     const normalizedFilter = filter.toLowerCase();
     return contacts.filter(contact =>
       contact.name.toLowerCase().includes(normalizedFilter),
     );
   };
 
-  deleteContact = contactId => {
-    this.setState(prevState => ({
-      contacts: prevState.contacts.filter(contact => contact.id !== contactId),
-    }));
+  const deleteContact = contactId => {
+    setContacts(prevState =>
+      prevState.filter(contact => contact.id !== contactId),
+    );
   };
 
-  render() {
-    const filteredContacts = this.getFilteredContacts();
-    const { filter } = this.state;
-
-    return (
-      <div className="container">
-        <h1>Phonebook</h1>
-        <ContactForm onSubmit={this.contactFormSubmitHandler} />
-        <h2>Contacts</h2>
-        <Filter value={filter} onChange={this.changeFilter} />
-        <ContactList
-          contacts={filteredContacts}
-          onDeleteContact={this.deleteContact}
-        />
-      </div>
-    );
-  }
+  return (
+    <div className="container">
+      <h1>Phonebook</h1>
+      <ContactForm onSubmit={contactFormSubmitHandler} />
+      <h2>Contacts</h2>
+      <Filter value={filter} onChange={changeFilter} />
+      <ContactList
+        contacts={getFilteredContacts()}
+        onDeleteContact={deleteContact}
+      />
+    </div>
+  );
 }
 
-export default App;
+App.propTypes = {
+  contacts: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.string,
+      name: PropTypes.string,
+      number: PropTypes.string,
+    }),
+  ),
+  filter: PropTypes.string,
+};
